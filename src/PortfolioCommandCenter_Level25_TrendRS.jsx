@@ -24,7 +24,6 @@ import React, { useState, useMemo, useEffect, useCallback, useRef } from "react"
   ============================================================================
 */
 
-const PASSCODE = "frontier";
 const PRICE_REFRESH_MS = 60_000;       // live prices: every 60s
 const HISTORY_REFRESH_MS = 600_000;    // trend history: every 10 min
 const STAGGER_MS = 1500;               // delay between per-coin history calls
@@ -163,27 +162,7 @@ const Label = ({ children }) => (
   <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 11, letterSpacing: 2, textTransform: "uppercase", color: C.dim, marginBottom: 10 }}>{children}</div>
 );
 
-function Gate({ onUnlock }) {
-  const [val, setVal] = useState(""); const [err, setErr] = useState(false);
-  const submit = () => (val === PASSCODE ? onUnlock() : setErr(true));
-  return (
-    <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: C.bg, fontFamily: "'Inter', sans-serif" }}>
-      <div style={{ textAlign: "center", width: 320 }}>
-        <div style={{ fontFamily: "'Oxanium', sans-serif", fontWeight: 800, fontSize: 22, color: C.ink, letterSpacing: 1 }}>DIGITAL FRONTIER</div>
-        <div style={{ color: C.cyan, fontSize: 12, letterSpacing: 3, marginBottom: 28, fontFamily: "'IBM Plex Mono', monospace" }}>COMMAND CENTER</div>
-        <input type="password" value={val} placeholder="passcode"
-          onChange={(e) => { setVal(e.target.value); setErr(false); }}
-          onKeyDown={(e) => e.key === "Enter" && submit()}
-          style={{ width: "100%", padding: "12px 14px", background: C.panel, border: `1px solid ${err ? C.red : C.line}`, borderRadius: 10, color: C.ink, fontSize: 15, outline: "none", fontFamily: "'IBM Plex Mono', monospace" }} />
-        <button onClick={submit} style={{ width: "100%", marginTop: 12, padding: 12, background: C.blue, border: "none", borderRadius: 10, color: "#fff", fontWeight: 600, fontSize: 15, cursor: "pointer" }}>Enter</button>
-        {err && <div style={{ color: C.red, fontSize: 12, marginTop: 10 }}>Incorrect passcode</div>}
-      </div>
-    </div>
-  );
-}
-
 export default function PortfolioCommandCenter() {
-  const [unlocked, setUnlocked] = useState(false);
   const [holdings, setHoldings] = useState(INITIAL);
   const [prices, setPrices] = useState({});
   const [dominance, setDominance] = useState(null);
@@ -250,14 +229,13 @@ export default function PortfolioCommandCenter() {
   }, [cryptoCgIds, rsHist]);
 
   useEffect(() => {
-    if (!unlocked) return;
     refreshPrices();
     refreshHistory();
     const priceT = setInterval(refreshPrices, PRICE_REFRESH_MS);
     historyTimer.current = setInterval(refreshHistory, HISTORY_REFRESH_MS);
     return () => { clearInterval(priceT); clearInterval(historyTimer.current); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [unlocked]);
+  }, []);
 
   const priceOf = useCallback((h) => (h.cgId && prices[h.cgId] ? prices[h.cgId].usd : h.manualPrice ?? 0), [prices]);
   const change24Of = useCallback((h) => (h.cgId && prices[h.cgId] ? prices[h.cgId].usd_24h_change ?? null : null), [prices]);
@@ -276,8 +254,6 @@ export default function PortfolioCommandCenter() {
 
   const setQty = (id, qty) => setHoldings((hs) => hs.map((h) => (h.id === id ? { ...h, qty: +qty || 0 } : h)));
   const setManualPrice = (id, mp) => setHoldings((hs) => hs.map((h) => (h.id === id ? { ...h, manualPrice: +mp || 0 } : h)));
-
-  if (!unlocked) return <Gate onUnlock={() => setUnlocked(true)} />;
 
   const statusColor = status === "live" ? C.green : status === "stale" ? C.amber : C.dim;
   const sortedCrypto = [...enriched].filter((h) => h.bucket === "crypto").sort((a, b) => b.value - a.value);
